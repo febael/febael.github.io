@@ -13,6 +13,11 @@ header {
   text-align: center;
 }
 
+text {
+  user-select: none;
+  -webkit-user-select: none; /* For Safari */
+}
+
 #sb {
   width: 98%;
   margin-left: 1%;
