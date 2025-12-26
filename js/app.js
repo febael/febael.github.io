@@ -1,9 +1,10 @@
+const pStyle = document.getElementById('p').style;
+const sb = document.getElementById('sb');
+
 function resize() {
   const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
   const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
   const r = vw / vh;
-  const pStyle = document.getElementById('p').style;
-  const sb = document.getElementById('sb');
 
   switch (true) {
     case r > 3   : console.log("ultra-wide"); break; // TODO : implement it
@@ -12,7 +13,6 @@ function resize() {
     case r > 0.7 : handleAlmostSquare(); break;
     default      : handleVertical();
   }
-  recreateClickAreas();
 
   function handleWide() {
     const w = 161 - r * 30;
@@ -47,13 +47,7 @@ function resize() {
     pStyle.width = w + "%";
     pStyle.marginLeft = (100 - w) / 2 + "%";
   }
-
-  function recreateClickAreas() {
-    const sbsvg = sb.querySelector("svg");
-  }
 }
-
-
 
 const resizeObserver = new ResizeObserver(() => {
   resize()
