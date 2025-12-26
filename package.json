@@ -1,0 +1,17 @@
+{
+  "name": "febael-s-personal-page",
+  "version": "0.0.1",
+  "description": "",
+  "private": true,
+  "keywords": [
+    ""
+  ],
+  "license": "",
+  "author": "Ferit Baver Elhüseyni",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "devDependencies": {
+    "serve": "^14.2.5"
+  }
+}
