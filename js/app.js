@@ -99,6 +99,7 @@ document.body.appendChild(cinemaFrame);
 
 // Wait for page load to allow iframe visibility
 let pageLoaded = false;
+let clickHandler = ()=>{};
 window.addEventListener('load', () => { pageLoaded = true; });
 
 cinemaG.addEventListener('mouseenter', () => {
@@ -113,12 +114,14 @@ cinemaG.addEventListener('mouseleave', () => {
   clearTimeout(cinemaTimer);
   cinemaFrame.classList.remove('active');
   isCinemaOpen = false;
+  cinemaG.removeEventListener('click', clickHandler);
 });
 
 function showRandomMovie() {
   const randomMovie = movies[Math.floor(Math.random() * movies.length)];
   cinemaFrame.src = randomMovie.url;
-  cinemaG.addEventListener('click', () => window.open(randomMovie.url, '_blank'));
+  cinemaG.removeEventListener('click', clickHandler);
+  cinemaG.addEventListener('click', clickHandler = () => window.open(randomMovie.url, '_blank'));
   randomMovie.show();
 
   // Align iframe position to div #p's dimensions from handle functions
