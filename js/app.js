@@ -55,16 +55,27 @@ const resizeObserver = new ResizeObserver(() => {
 });
 resizeObserver.observe(document.body);
 
+const defaultShow = async () => {
+  await moveCinemaSpotlight(0, 0, 6)
+  await moveCinemaSpotlight(5, 0, 18);
+  await moveCinemaSpotlight(10, 0, 36);
+  await moveCinemaSpotlight(15, 0, 54);
+}
 const movies = [
-  {
-    url: "https://febael.blogspot.com/2014/01/1945-children-of-paradise.html",
-    show: async () => {
-      await moveCinemaSpotlight(0, 0, 15)
-      await moveCinemaSpotlight(5, 0, 30);
-      await moveCinemaSpotlight(10, 0, 45);
-      await moveCinemaSpotlight(15, 0, 60);
-    }
-  }
+  { url: "https://febael.blogspot.com/2014/01/1945-children-of-paradise.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2014/04/1966-hudutlarn-kanunu.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2013/11/2011-le-havre.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2012/08/1962-seppuku.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2012/08/add-caption-mother-and-son-is.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2012/08/2005-le-temps-qui-reste.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2012/06/2010-film-socialisme.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2012/01/1931-dr-jekyll-and-mr-hyde.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2012/01/1985-kiss-of-spider-woman.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2011/12/1983-tchao-pantin.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2011/12/for-me-movie-is-greater-at-rate-it-is.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2011/11/one-of-my-favorite-movies-they-shoot.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2011/11/1974-zardoz.html", show: defaultShow },
+  { url: "https://febael.blogspot.com/2011/11/1962-loneliness-of-long-distance-runner.html", show: defaultShow },
 ];
 
 /**
@@ -89,6 +100,7 @@ function moveCinemaSpotlight(x, y, r = 30) {
 }
 
 const cinemaG = document.getElementById('cinema');
+const hobbyText = cinemaG.querySelector('text:nth-of-type(3)');
 let cinemaTimer = null;
 let isCinemaOpen = false;
 
@@ -102,8 +114,13 @@ let pageLoaded = false;
 let clickHandler = ()=>{};
 window.addEventListener('load', () => { pageLoaded = true; });
 
+const hobbies = ['Sumo', 'Music', 'Reading', 'Coding', 'Football', 'Basketball'];
+
 cinemaG.addEventListener('mouseenter', () => {
   if (isCinemaOpen || !pageLoaded) return;
+
+  hobbyText.innerHTML = hobbies[Math.floor(Math.random() * hobbies.length)];
+  setTimeout(() => hobbyText.innerHTML = 'Cinema', 100);
 
   cinemaTimer = setTimeout(() => {
     showRandomMovie();
@@ -115,6 +132,7 @@ cinemaG.addEventListener('mouseleave', () => {
   cinemaFrame.classList.remove('active');
   isCinemaOpen = false;
   cinemaG.removeEventListener('click', clickHandler);
+  hobbyText.innerHTML = 'Cinema';
 });
 
 function showRandomMovie() {
