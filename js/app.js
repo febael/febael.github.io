@@ -55,11 +55,11 @@ const resizeObserver = new ResizeObserver(() => {
 });
 resizeObserver.observe(document.body);
 
-const defaultShow = async () => {
-  await moveCinemaSpotlight(0, 0, 6)
-  await moveCinemaSpotlight(5, 0, 18);
-  await moveCinemaSpotlight(10, 0, 36);
-  await moveCinemaSpotlight(15, 0, 54);
+const defaultShow = async (generation) => {
+  await moveCinemaSpotlight(generation, 0, 0, 6)
+  await moveCinemaSpotlight(generation, 5, 0, 18);
+  await moveCinemaSpotlight(generation, 10, 0, 36);
+  await moveCinemaSpotlight(generation, 15, 0, 54);
 }
 const movies = [
   { url: "https://febael.blogspot.com/2014/01/1945-children-of-paradise.html", show: defaultShow },
@@ -80,34 +80,44 @@ const movies = [
 
 /**
  * Moves or resizes the visible circular area and returns a promise
+ * Resolves immediately (and stops the chain) when the generation is stale,
+ * i.e. the cinema was closed while the animation was still running.
+ * @param {number} generation - Cinema generation this animation belongs to
  * @param {number} x - Horizontal center (%)
  * @param {number} y - Vertical center (%)
  * @param {number} r - Radius (%)
  * @returns {Promise} Resolves when the animation finishes
  */
-function moveCinemaSpotlight(x, y, r = 30) {
+function moveCinemaSpotlight(generation, x, y, r = 30) {
   return new Promise((resolve) => {
-    const onEnd = (e) => {
-      // Only resolve if the clip-path transition finished
-      if (e.propertyName === 'clip-path') {
-        cinemaFrame.removeEventListener('transitionend', onEnd);
-        resolve();
-      }
+    const frame = cinemaFrame;
+    if (!frame || generation !== cinemaGeneration) {
+      resolve();
+      return;
+    }
+
+    const settle = () => {
+      frame.removeEventListener('transitionend', onEnd);
+      pendingSpotlights.delete(settle);
+      resolve();
     };
-    cinemaFrame.addEventListener('transitionend', onEnd);
-    cinemaFrame.style.clipPath = `circle(${r}% at ${x}% ${y}%)`; // Trigger the change
+    function onEnd(e) {
+      // Only resolve if the clip-path transition finished
+      if (e.propertyName === 'clip-path') settle();
+    }
+
+    frame.addEventListener('transitionend', onEnd);
+    pendingSpotlights.add(settle);
+    frame.style.clipPath = `circle(${r}% at ${x}% ${y}%)`; // Trigger the change
   });
 }
 
 const cinemaG = document.getElementById('cinema');
 const hobbyText = cinemaG.querySelector('text:nth-of-type(3)');
 let cinemaTimer = null;
-let isCinemaOpen = false;
-
-// Create and inject the iframe
-const cinemaFrame = document.createElement('iframe');
-cinemaFrame.id = 'cinema-frame';
-document.body.appendChild(cinemaFrame);
+let cinemaFrame = null;
+let cinemaGeneration = 0;
+const pendingSpotlights = new Set();
 
 // Wait for page load to allow iframe visibility
 let pageLoaded = false;
@@ -116,8 +126,83 @@ window.addEventListener('load', () => { pageLoaded = true; });
 
 const hobbies = ['Sumo', 'Music', 'Reading', 'Coding', 'Football', 'Basketball'];
 
+// A frame is created on hover and destroyed when a movie is done being shown
+// (unhover / Esc), so every reveal starts from the default hidden state.
+// The inline clip-path set by the spotlight chain outranks the class rules, so
+// simply removing .active left the previous reveal in place: the next hover
+// animated 54% -> 6% -> 54%, which looked like a flicker from the second hover
+// onwards. Rebuilding the frame (and fading the old one out) removes that state.
+const FRAME_FADE_OUT_MS = 1000; // keep in sync with the opacity transition
+const fadeOutTimers = new Set();
+
+function createCinemaFrame() {
+  // Drop any frame that is still fading out so two never overlap.
+  fadeOutTimers.forEach((timer) => clearTimeout(timer));
+  fadeOutTimers.clear();
+  document.querySelectorAll('.cinema-frame').forEach((stale) => stale.remove());
+
+  const frame = document.createElement('iframe');
+  frame.className = 'cinema-frame';
+  document.body.appendChild(frame);
+  return frame;
+}
+
+function destroyCinemaFrame() {
+  cinemaGeneration += 1;
+  pendingSpotlights.forEach((settle) => settle());
+  pendingSpotlights.clear();
+
+  if (!cinemaFrame) return;
+
+  const fading = cinemaFrame;
+  cinemaFrame = null;
+
+  fading.classList.remove('active');
+  fading.classList.add('fading');
+  fading.style.pointerEvents = 'none';
+
+  const timer = setTimeout(() => {
+    fadeOutTimers.delete(timer);
+    fading.src = 'about:blank';
+    fading.remove();
+  }, FRAME_FADE_OUT_MS);
+  fadeOutTimers.add(timer);
+}
+
+function closeCinema() {
+  clearTimeout(cinemaTimer);
+  destroyCinemaFrame();
+  cinemaG.removeEventListener('click', clickHandler);
+  hobbyText.innerHTML = 'Cinema';
+}
+
+function showRandomMovie() {
+  if (cinemaFrame) return;
+  cinemaFrame = createCinemaFrame();
+  const generation = cinemaGeneration;
+
+  const randomMovie = movies[Math.floor(Math.random() * movies.length)];
+  cinemaFrame.src = randomMovie.url;
+  cinemaG.removeEventListener('click', clickHandler);
+  cinemaG.addEventListener('click', clickHandler = () => window.open(randomMovie.url, '_blank'));
+
+  // Align iframe position to div #p's dimensions from handle functions
+  const rect = psvg.getBoundingClientRect();
+  cinemaFrame.style.top = rect.top + "px";
+  cinemaFrame.style.left = rect.left + "px";
+  cinemaFrame.style.width = rect.width + "px";
+  cinemaFrame.style.height = rect.height + "px";
+
+  // Force a style resolution on the freshly inserted frame: without a computed
+  // start value the fade-in would snap instead of transition.
+  void cinemaFrame.offsetWidth;
+
+  cinemaFrame.classList.add('active');
+  randomMovie.show(generation);
+}
+
 cinemaG.addEventListener('mouseenter', () => {
-  if (isCinemaOpen || !pageLoaded) return;
+  if (cinemaFrame || !pageLoaded) return;
 
   hobbyText.innerHTML = hobbies[Math.floor(Math.random() * hobbies.length)];
   setTimeout(() => hobbyText.innerHTML = 'Cinema', 100);
@@ -127,37 +212,8 @@ cinemaG.addEventListener('mouseenter', () => {
   }, 3000); // 3 seconds delay
 });
 
-cinemaG.addEventListener('mouseleave', () => {
-  clearTimeout(cinemaTimer);
-  cinemaFrame.classList.remove('active');
-  isCinemaOpen = false;
-  cinemaG.removeEventListener('click', clickHandler);
-  hobbyText.innerHTML = 'Cinema';
-});
+cinemaG.addEventListener('mouseleave', closeCinema);
 
-function showRandomMovie() {
-  const randomMovie = movies[Math.floor(Math.random() * movies.length)];
-  cinemaFrame.src = randomMovie.url;
-  cinemaG.removeEventListener('click', clickHandler);
-  cinemaG.addEventListener('click', clickHandler = () => window.open(randomMovie.url, '_blank'));
-  randomMovie.show();
-
-  // Align iframe position to div #p's dimensions from handle functions
-  const rect = psvg.getBoundingClientRect();
-  cinemaFrame.style.top = rect.top + "px";
-  cinemaFrame.style.left = rect.left + "px";
-  cinemaFrame.style.width = rect.width + "px";
-  cinemaFrame.style.height = rect.height + "px";
-
-  cinemaFrame.classList.add('active');
-  isCinemaOpen = true;
-}
-
-// Close cinema if clicking outside or handle with your own shrink logic
 window.addEventListener('keydown', (e) => {
-  if (e.key === "Escape" && isCinemaOpen) {
-    cinemaFrame.classList.remove('active');
-    cinemaFrame.src = "about:blank";
-    isCinemaOpen = false;
-  }
+  if (e.key === "Escape") closeCinema();
 });

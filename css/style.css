@@ -45,7 +45,7 @@ text {
   opacity: 1;
 }
 
-#cinema-frame {
+.cinema-frame {
   position: fixed;
   top: 0;
   left: 0;
@@ -59,10 +59,16 @@ text {
   clip-path: circle(0% at 0% 0%); /* Start hidden */
 }
 
-#cinema-frame.active {
+.cinema-frame.active {
   opacity: 0.3;
   pointer-events: auto;
   clip-path: circle(10% at 0% 0%); /* Example revealed area */
+}
+
+/* A detached frame that is only fading away, never interactive */
+.cinema-frame.fading {
+  opacity: 0;
+  pointer-events: none;
 }
 
 
